@@ -1,0 +1,32 @@
+query PriceHistory($tokenAddress: ID!, $date_gt: Int!) {
+  tokenDayDatas(
+    where: { token: $tokenAddress, date_gt: date }
+    orderBy: date
+    orderDirection: asc
+  ) {
+    date
+    priceUSD
+  }
+}
+
+query VolumeHistory($tokenAddress: ID!, $date_gt: Int!) {
+  tokenDayDatas(
+    where: { token: $tokenAddress, date_gt: date_gt }
+    orderBy: date
+    orderDirection: asc
+  ) {
+    date
+    totalVolumeUSD
+  }
+}
+
+query LiquidityHistory($tokenAddress: ID!, $date_gt: Int!) {
+  tokenDayDatas(
+    where: { token: $tokenAddress, date_gt: date_gt }
+    orderBy: date
+    orderDirection: asc
+  ) {
+    date
+    totalLiquidityUSD
+  }
+}

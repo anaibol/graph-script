@@ -1,0 +1,18 @@
+{
+  "name": "graph-script",
+  "version": "1.0.0",
+  "license": "MIT",
+  "devDependencies": {
+    "@graphprotocol/client-cli": "^3.0.0",
+    "nodemon": "^2.0.22",
+    "ts-node": "^10.9.1"
+  },
+  "dependencies": {
+    "graphql": "^16.6.0",
+    "graphql-tag": "^2.12.6"
+  },
+  "scripts": {
+    "start": "nodemon index.ts --trace-deprecation --watch . --ext ts,graphql --exec ts-node",
+    "build": "graphclient build"
+  }
+}

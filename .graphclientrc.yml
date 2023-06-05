@@ -1,0 +1,17 @@
+# sources:
+#   - name: surgeswap-v1-eth
+#     handler:
+#       graphql:
+#         endpoint: https://api.thegraph.com/subgraphs/name/somemoecoding/surgeswap-v1-eth
+
+# documents:
+#   - ./src/example-query.graphql
+
+sources:
+  - name: surgeswap-v2
+    handler:
+      graphql:
+        endpoint: https://api.thegraph.com/subgraphs/name/somemoecoding/surgeswap-v2
+
+documents:
+  - ./src/example-query.graphql
