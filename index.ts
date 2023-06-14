@@ -1,97 +1,83 @@
 import { execute } from './.graphclient';
 import gql from 'graphql-tag';
+import fs from 'fs';
 
-const TOKEN_ADDRESS = '0x43C3EBaFdF32909aC60E80ee34aE46637E743d65';
+async function retrieveMarketIndicators(tokenId: string, interval = 'daily') {
+  const pageSize = 1; // Only one result needed for the initial query
+  let skip = 0; // Initial skip value
 
-async function fetchDataHourly(query: any) {
-  const now = Math.floor(Date.now() / 1000);
-  const oneHour = 60 * 60;
-  const startDate = now - 30 * 24 * oneHour;
-  const endDate = now;
+  // Array to store all token day data
+  let allTokenDayData: any[] = [];
 
-  const numHours = Math.floor((endDate - startDate) / oneHour);
+  const initialResponse = await execute(gql`
+    query Token($tokenId: String!) {
+      token(id: $tokenId) {
+        tokenDayData(
+          first: 1
+          skip: 0
+          orderBy: date
+          orderDirection: asc
+        ) {
+          date
+        }
+      }
+    }
+  `, {
+    tokenId,
+  });
 
-  for (let i = 0; i < numHours; i++) {
-    const currentTimestamp = startDate + i * oneHour;
+  const dayZeroTimestamp = initialResponse.data.token.tokenDayData[0].date;
+  const dayZer2oTimestamp = initialResponse.data.token.tokenDayData[initialResponse.data.token.tokenDayData.length - 1].date;
+  console.log({dayZeroTimestamp, dayZer2oTimestamp})
+  const currentTimestamp = Math.floor(Date.now() / 1000);
 
-    const response = await execute(query, {
-      tokenAddress: TOKEN_ADDRESS,
-      date_gt: currentTimestamp,
-    });
+  // Main query definition
+  const query = gql`
+    query Token($tokenId: String!, $dateFilter: TokenDayData_filter, $pageSize: Int!, $skip: Int!) {
+      token(id: $tokenId) {
+        tokenDayData(
+          first: $pageSize
+          skip: $skip
+          orderBy: date
+          orderDirection: asc
+          where: $dateFilter
+        ) {
+          date
+          priceUSD
+          totalLiquidityUSD
+          dailyVolumeUSD
+        }
+      }
+    }
+  `;
 
-    const data = response.data.surgeswapDayDatas;
-    console.log('Data for', new Date(currentTimestamp * 1000), ':', data);
+  // Depending on the interval, we might need to iterate multiple times
+  const intervalInSeconds = interval === 'hourly' ? 3600 : 86400;
+
+  for (let timestamp = dayZeroTimestamp; timestamp <= currentTimestamp; timestamp += intervalInSeconds) {
+    const variables = {
+      tokenId,
+      dateFilter: {
+        date_gte: timestamp,
+        date_lte: timestamp + intervalInSeconds,
+      },
+      pageSize,
+      skip,
+    };
+
+    const response = await execute(query, variables);
+
+    console.log(response, {
+      date_gte: timestamp,
+      date_lte: timestamp + intervalInSeconds,
+    })
+
+    // Append the fetched data to the allTokenDayData array
+    allTokenDayData = allTokenDayData.concat(response.data.token.tokenDayData);
   }
+
+  fs.writeFileSync(`./data.json`, JSON.stringify(allTokenDayData, null, 2));
 }
 
-async function retrievePriceHistory() {
-  const priceHistoryQuery = gql`
-    query PriceHistory($tokenAddress: ID!) {
-      surgeswapDayDatas(
-        where: {
-          token: $tokenAddress
-          date_gt: 0
-        }
-        orderBy: date
-        orderDirection: asc
-      ) {
-        date
-        priceUSD
-      }
-    }
-  `;
-
-  await fetchDataHourly(priceHistoryQuery);
-}
-
-async function retrieveVolumeHistory() {
-  const volumeHistoryQuery = gql`
-    query VolumeHistory($tokenAddress: ID!) {
-      surgeswapDayDatas(
-        where: {
-          token: $tokenAddress
-          date_gt: 0
-        }
-        orderBy: date
-        orderDirection: asc
-      ) {
-        date
-        totalVolumeUSD
-      }
-    }
-  `;
-
-  await fetchDataHourly(volumeHistoryQuery);
-}
-
-async function retrieveLiquidityHistory() {
-  const liquidityHistoryQuery = gql`
-    query LiquidityHistory($tokenAddress: ID!) {
-      surgeswapDayDatas(
-        where: {
-          token: $tokenAddress
-          date_gt: 0
-        }
-        orderBy: date
-        orderDirection: asc
-      ) {
-        date
-        totalLiquidityUSD
-      }
-    }
-  `;
-
-  await fetchDataHourly(liquidityHistoryQuery);
-}
-
-async function runScript() {
-  try {
-    await retrievePriceHistory();
-    await retrieveVolumeHistory();
-    await retrieveLiquidityHistory();
-  } catch (error) {
-    console.error('An error occurred:', error);
-  }
-}
-
-runScript();
+// Call the function with the token ID and the interval
+retrieveMarketIndicators('0x43c3ebafdf32909ac60e80ee34ae46637e743d65', 'hourly');
